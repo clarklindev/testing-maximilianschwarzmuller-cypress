@@ -7,18 +7,24 @@ vscode add extension for Cypress autocomplete
 npm i cypress
 
 # go to project folder
+npx cypress run (run in headless mode)
 npx cypress open
 ```
 
 - E2E testing -> start E2E Testing in chrome -> new Spec
 - this creates a cypress/ folder in your project folder
 - test run in isolation
+- the official recommended way to select elements from dom is to use data- attribute as a selector
+- use cypress studio app in the browser -> selector playground to hover over elements and cypress give you the best selector
+- you can use constants to store cy DOM queries - but preferable to rather use as()
+- cypress gives each test step 4seconds timeframe to run assertion
 
 ## testing - link should exist
 - it will fail if project not started
 - npm run dev
 - to get auto cypress auto completion add to top of test file: 
-- 
+- /// <reference types="Cypress"/>
+
 
 ```js
 // using cy object to make tests
@@ -94,4 +100,96 @@ describe('tasks management', ()=>{
     cy.get('#filter').select('all');
     cy.get('.task').should('have.length', 1);  
   });
+```
+
+### using data- attributes for testing
+- navigate between pages
+- data-cy attribute - this is the recommended default way to select elements
+- use .go() and .location() for navigating
+
+```js
+it('should navigate between pages', ()=>{
+    cy.visit('http://localhost:5173/');
+    cy.get('data-cy["header-about-link"]').click();
+    // verify we navigated to that page
+    cy.location('pathname').should('eq', '/about'); //about
+    cy.go('back');
+    cy.location('pathname').should('eq', '/'); //home
+
+    //go to about page
+    cy.get('data-cy["header-about-link"]').click();
+    //test home link from about page
+    cy.get('data-cy["header-home-link"]').click();
+    cy.location('pathname').should('eq', '/'); //home
+
+  })
+```
+
+## forms
+```js
+// contact.cy.js
+describe("contact form", ()=>{
+  cy.visit('http://localhost:5173/about');
+  cy.get('[data-cy="contact-input-message"]').type('Hello world');
+  cy.get('[data-cy="contact-input-name"]').type('John');
+  cy.get('[data-cy="contact-input-email"]').type('john@email.com');
+  //check button text before sending
+  cy.get('[data-cy="contact-button-submit"]').contains('Send Message');
+  // check button is not disabled
+  cy.get('[data-cy="contact-button-submit"]').should('not.have.attr', "disabled");
+  cy.get('[data-cy="contact-button-submit"]').click();
+  // sending state
+  cy.get('[data-cy="contact-button-submit"]').contains('Sending...');
+  //check button is disabled
+  cy.get('[data-cy="contact-button-submit"]').should('have.attr', "disabled");
+})
+```
+
+### using an alias and then referencing it with @
+- you can use constants to store cy DOM queries - but preferable to rather use as()
+  
+```js
+  cy.get('[data-cy="contact-button-submit"]').as('submitBtn');
+  cy.get('@submitBtn').click();
+
+```
+
+### reference to the element (wrapper around result set from css selector)
+- cypress allows the then method -> which you can pass an anonymous function 
+- .get() returns actual element in dom giving access to the dom element properties (wrapper object around matched dom element(s))
+- then() method can be chained
+- MUST make use of expect() inside .then() - cant use should() inside then()
+
+```js
+  cy.get('[data-cy="contact-button-submit"]').then((el)=>{
+    expect(el.attr('disabled')).to.be.undefined;
+  })
+
+```
+
+### simulating special key presses
+- eg. hitting enter key to submit 
+- {enter} key press simulation
+
+```js
+ cy.get('[data-cy="contact-input-email"]').type('john@email.com{enter}');
+
+```
+
+###  validation and styling change and checking after touched / dirty  
+- eg. when you active an input, but click away
+
+
+### running cypress tests from vscode internal powershell
+- you can run tests using:
+- test results may differ from browser cypress studio app (npx cypress open)
+```
+npx cypress run
+```
+
+### screenshots
+- you can tell cypress to take screenshots
+
+```js
+cy.screenshot();
 ```
