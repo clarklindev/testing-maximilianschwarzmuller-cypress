@@ -325,3 +325,108 @@ export default defineConfig({
 });
 
 ```
+------------------------------------------------------------------------------------
+### 05. Stubs, Spies, Fixtures, Manipulating the Clock
+
+- simulating fetching get users location -> browser asks for permission for location
+
+#### stubs
+- a replacement for an existing function / method
+- used for evaluating and controlling function calls
+- it simulates - by making use of dummy test functions
+- eg. browser requests permissions to access location -> simulate getting users location
+  - but thats only in browser
+  - what happens when you use headless testing (without browser)? 
+  - solution is to use stub(), 
+    - stub takes 2 arguments: 
+      1. points at object that contains the method you want to replace
+      2. name of method you want to replace as a string.
+- note the window object is only accessible after cy.visit() which gives window object
+- you then check if the stub method is called by giving the stub an alias so you can reference it later
+- use .callsFake() for the implementation of the as('') fake function that would be called 
+- it receives a callback function as argument: cb({coords: { latitude: 37.5, longitude: 48.01 }});
+- the execution is almost instant so loader and text might not get picked up by cypress because it happens too quickly
+  - addin a timeout to cypress test will make sure it gets picked up 
+```js
+  navigator.geolocation.getCurrentPosition(function (position) 
+```
+
+```js
+// e2e/location.cy.js
+/// <reference types="cypress" />
+
+describe('share location', () => {
+  it('should fetch the user location', () => {
+    cy.visit('/').then((win)=>{
+                                        // main.js
+      cy.stub(win.navigator.geolocation, "getCurrentPosition").as('getUserPosition').callsFake((cb)=>{
+        setTimeout(()=>{
+          cb({coords: {
+            latitude: 37.5,
+            longitude: 48.01
+          }});
+        }, 100);
+      });
+      cy.get('[data-cy="get-loc-btn"]').click();
+
+      // make sure our stub getCurrentPosition() is called
+      cy.get('@getUserPosition').should('have.been.called');
+    });
+  });
+});
+
+```
+- we dont test features provided by browser like there is data in the clipboard
+- we test if we called this api
+
+### beforeEach()
+- tests run in isolation so a stub in first test wont be available for second test unless stub is extracted to be used by tests that need it.
+- using a beforeEach hook
+
+```js
+describe(()=>{
+  beforeEach(()=>{
+  });
+})
+
+```
+
+### Fixtures
+- these are like environment variables but are pieces of json data that can be shared accross tests
+
+```json
+// fixtures/user-location.json 
+{
+  "coords":{
+    "latitude": 37.5,
+    "longitude": 48.01
+  }
+}
+```
+
+### Spies
+- listeners attached to functions 
+- does not change or replace the function
+- pass object and method name you want to add a spy to
+
+```js
+cy.spy(win.localStorage, 'setItem').as('storeLocation');
+cy.spy(win.localStorage, 'getItem').as('getStoredLocation');
+```
+
+```js
+// cy.js
+cy.get('@storeLocation').should('have.been.calledwithMatch', /John Doe/, new RegExp(`${latitude}.*${longitude}.*${encodeURI('John Doe')}`));
+cy.get('@storeLocation').should('have.been.called');
+```
+
+### Timers
+- manipulate the clock when waiting for intervals to pass (setTimeout) without waiting the time
+- advancing with .tick() to pass time
+- cy.clock() should be called in beforeEach() during initialize
+
+```
+cy.clock();
+
+cy.tick(2000); 
+```
